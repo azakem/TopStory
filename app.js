@@ -18,4 +18,9 @@ var conn = mysql.createConnection({
 
 conn.connect();
 
-nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, console.log);
+var pushToDatabase = function(data) {
+    var parsedData = JSON.parse(data);
+    console.log(parsedData);
+};
+
+nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, pushToDatabase);
