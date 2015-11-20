@@ -1,0 +1,16 @@
+{
+  "name": "topstory-nyt",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start": "node app"
+  },
+  "dependencies": {
+    "mysql": "*",
+    "nyt": "*",
+    "express": "*"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}
