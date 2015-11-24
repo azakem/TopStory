@@ -52,6 +52,7 @@ var createDatabase = function(data) {
   };
 
 var pushToDatabase = function(data, conn) {
+    parseSubjects(data);
     // Write stories to TopStories table
     var i = 1;
     for (var x in data.results)
@@ -100,4 +101,24 @@ var pushToDatabase = function(data, conn) {
     }
   };
 
+var parseSubjects = function(jsonData) {
+    var parsedData = JSON.parse(jsonData);
+    var subjects = {};
+    var arrayLength = parsedData.results.length;
+    for (var i = 0; i < arrayLength; i++) {
+        var keywords = parsedData.results[i].adx_keywords;
+        var split = keywords.split(";");
+        for (var j = 0; j < split.length; j++) {
+            var subject = split[j].trim();
+            if (subjects.hasOwnProperty(subject) && subject !== '') {
+                subjects[subject]++;
+            } else if (subject !== '') {
+                subjects[subject] = 1;
+            }
+        }
+    }
+    console.log(subjects);
+}
+
 nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, createDatabase);
+
