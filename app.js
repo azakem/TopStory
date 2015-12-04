@@ -1,5 +1,9 @@
 var NYT = require('nyt');
 var mysql = require('mysql');
+var AlchemyAPI = require('./alchemyapi');
+var alchemy = new AlchemyAPI;
+var util = require('util');
+var guardian = require('guardian-news');
 
 var keys = {
     'most-popular': 'cb76354cff5a72e93e1e76afa2e4015f:15:72699233'
@@ -8,8 +12,25 @@ var keys = {
 var nyt = new NYT(keys);
 var inserted = 0;
 
-var createDatabase = function(data) {
-    var parsedData = JSON.parse(data);
+var getGuardianArticles = function(data) {
+  guardian.config({
+    apiKey: '5c0868ca-c973-4d1d-8062-47ed79ef96ae'
+  });
+  var datetime = new Date();
+  var month = datetime.getUTCMonth() + 1;
+  var day = datetime.getUTCDate();
+  var year = datetime.getUTCFullYear();
+  currentDate = year + '-' + month + '-' + day
+  guardian.content({fromDate : currentDate}).then(function(response){
+    console.log(response.response.results);
+    createDatabase(response, data);
+  }, function(err){
+    console.log(err);
+  });
+}
+
+var createDatabase = function(gdata, ndata) {
+    var parsedNData = JSON.parse(ndata);
     var conn = mysql.createConnection({
       host     : 'ajz2120stories.cz6woaizkeyb.us-west-2.rds.amazonaws.com',
       port     : '3306',
@@ -45,33 +66,32 @@ var createDatabase = function(data) {
                   }
                   else {
                     console.log("Table TopStories Created");
-                    console.log(parsedData)
-                    pushToDatabase(parsedData, conn);
+                    console.log(parsedNData)
+                    pushToDatabase(parsedNData, gdata, conn);
                   }
                 })
   };
 
-var pushToDatabase = function(data, conn) {
-    parseSubjects(data);
-    // Write stories to TopStories table
-    var i = 1;
-    for (var x in data.results)
+var pushToDatabase = function(ndata, gdata, conn) {
+    parseSubjects(ndata);
+    // Write NYT stories to TopStories table
+    for (var i = 0; i < ndata.results.length; i++)
     {
-      var id = i;
-      var storyURL = data.results[x].url;
-      var section = data.results[x].section;
-      var title = data.results[x].title;
-      var abstract = data.results[x].abstract;
+      var id = i+1;
+      var storyURL = ndata.results[i].url;
+      var section = ndata.results[i].section;
+      var title = ndata.results[i].title;
+      var abstract = ndata.results[i].abstract;
       var source = "NYT";
       var firstImage = null;
-      if (data.results[x].media) {
-        if (data.results[x].media !== null) {
+      if (ndata.results[i].media) {
+        if (ndata.results[i].media !== null) {
           var done = false;
-          for (y in data.results[x].media) {
-            if (data.results[x].media[y].type == "image") {
-              for (z in data.results[x].media[y]["media-metadata"]) {
-                if (data.results[x].media[y]["media-metadata"][z].url) {
-                  firstImage = data.results[x].media[y]["media-metadata"][z].url;
+          for (var x=0; x < ndata.results[i].media.length; x++) {
+            if (ndata.results[i].media[x].type == "image") {
+              for (var y = 0; y < ndata.results[i].media[x]["media-metadata"].length; y++) {
+                if (ndata.results[i].media[x]["media-metadata"][y].url) {
+                  firstImage = ndata.results[i].media[x]["media-metadata"][y].url;
                   done = true;
                   break;
                 }
@@ -83,7 +103,7 @@ var pushToDatabase = function(data, conn) {
           }
         }
       }
-      var keywords = data.results[x].adx_keywords;
+      var keywords = ndata.results[i].adx_keywords;
       article = {ID: id, URL: storyURL, Section: section, Title: title,
                 Abstract: abstract, Source: source, FirstImage: firstImage,
                 Keywords: keywords};
@@ -97,16 +117,34 @@ var pushToDatabase = function(data, conn) {
             console.log(inserted,"Records Inserted");
           }
         });
-        i++;
+    }
+    var offset = ndata.results.length;
+    for (var i = 0; i < gdata.response.results.length; i++) {
+      var id = i+1+offset;
+      var storyURL = gdata.response.results[i].webUrl;
+      var section = gdata.response.results[i].sectionName;
+      var title = gdata.response.results[i].webTitle;
+      var source = "Guardian";
+      article = {ID: id, URL: storyURL, Section: section, Title: title,
+                Source: source};
+      conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
+          // Catch error in inserting record
+          if(err) {
+            console.log(err);
+          }
+          else {
+            inserted++;
+            console.log(inserted,"Records Inserted");
+          }
+        });
     }
   };
 
-var parseSubjects = function(jsonData) {
-    var parsedData = JSON.parse(jsonData);
+var parseSubjects = function(data) {
     var subjects = {};
-    var arrayLength = parsedData.results.length;
+    var arrayLength = data.results.length;
     for (var i = 0; i < arrayLength; i++) {
-        var keywords = parsedData.results[i].adx_keywords;
+        var keywords = data.results[i].adx_keywords;
         var split = keywords.split(";");
         for (var j = 0; j < split.length; j++) {
             var subject = split[j].trim();
@@ -120,5 +158,4 @@ var parseSubjects = function(jsonData) {
     console.log(subjects);
 }
 
-nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, createDatabase);
-
+nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
