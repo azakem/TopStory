@@ -139,8 +139,8 @@ var pushToDatabase = function(ndata, gdata, conn) {
 var parseSubjects = function(jsonData) {
     var arrayLength = jsonData.results.length;
     for (var i = 0; i < arrayLength; i++) {
-        var abstractText = jsonData.results[i].abstract;
-        alchemy.concepts( abstractText, {}, function(err, response) {
+        var url = jsonData.results[i].url;
+        alchemy.concepts( url, {}, function(err, response) {
             if (err) {
                 throw err;
             }
@@ -159,6 +159,7 @@ var parseSubjects = function(jsonData) {
                     subjects[subject]++;
                 }
             }
+            console.log(subjects);
         });
     }
 }
