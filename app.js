@@ -1,9 +1,9 @@
 var NYT = require('nyt');
 var mysql = require('mysql');
-var AlchemyAPI = require('./alchemyapi');
-var alchemy = new AlchemyAPI;
 var util = require('util');
 var guardian = require('guardian-news');
+var AlchemyAPI = require('alchemy-api');
+var alchemy = new AlchemyAPI('38be13e0eb95fc7806ff197fbb784d33558dbe3c');
 
 var keys = {
     'most-popular': 'cb76354cff5a72e93e1e76afa2e4015f:15:72699233'
@@ -11,6 +11,7 @@ var keys = {
 
 var nyt = new NYT(keys);
 var inserted = 0;
+var subjects = {};
 
 var getGuardianArticles = function(data) {
   guardian.config({
@@ -32,11 +33,11 @@ var getGuardianArticles = function(data) {
 var createDatabase = function(gdata, ndata) {
     var parsedNData = JSON.parse(ndata);
     var conn = mysql.createConnection({
-      host     : 'ajz2120stories.cz6woaizkeyb.us-west-2.rds.amazonaws.com',
-      port     : '3306',
-      user     : 'topstory',
-      password : 'topstory',
-      database : 'stories',
+        host     : 'ajz2120stories.cz6woaizkeyb.us-west-2.rds.amazonaws.com',
+        port     : '3306',
+        user     : 'topstory',
+        password : 'topstory',
+        database : 'stories',
     });
 
     conn.connect();
@@ -44,12 +45,12 @@ var createDatabase = function(gdata, ndata) {
     conn.query('DROP TABLE IF EXISTS TopStories', function(err, result) {
         // Catch error in dropping table
         if(err) {
-          console.log(err);
+            console.log(err);
         }
         else {
-          console.log("Table TopStories Dropped");
+            console.log("Table TopStories Dropped");
         }
-      })
+    });
     // Create new TopStories table
     conn.query("CREATE TABLE TopStories ( \
               ID int, \
@@ -95,12 +96,7 @@ var pushToDatabase = function(ndata, gdata, conn) {
                   done = true;
                   break;
                 }
-              }
             }
-            if (done == true) {
-              break;
-            }
-          }
         }
       }
       var keywords = ndata.results[i].adx_keywords;
@@ -138,24 +134,34 @@ var pushToDatabase = function(ndata, gdata, conn) {
           }
         });
     }
-  };
+};
 
-var parseSubjects = function(data) {
-    var subjects = {};
-    var arrayLength = data.results.length;
+var parseSubjects = function(jsonData) {
+    var arrayLength = jsonData.results.length;
     for (var i = 0; i < arrayLength; i++) {
-        var keywords = data.results[i].adx_keywords;
-        var split = keywords.split(";");
-        for (var j = 0; j < split.length; j++) {
-            var subject = split[j].trim();
-            if (subjects.hasOwnProperty(subject) && subject !== '') {
-                subjects[subject]++;
-            } else if (subject !== '') {
-                subjects[subject] = 1;
+        var abstractText = jsonData.results[i].abstract;
+        alchemy.concepts( abstractText, {}, function(err, response) {
+            if (err) {
+                throw err;
             }
-        }
+            //console.log(response);
+            var concepts = response.concepts;
+            for (var i = 0; i < 3 && i < concepts.length; i++) {
+                var subject = concepts[i].text;
+                /*if (subjects.hasOwnProperty(subject) && subject !== '') {
+                    subjects[subject]++;
+                } else if (subject !== '') {
+                    subjects[subject] = 1;
+                }*/
+                if (subjects[subject] === undefined && subject !== '') {
+                    subjects[subject] = 1;
+                } else if (subject !== '') {
+                    subjects[subject]++;
+                }
+            }
+        });
     }
-    console.log(subjects);
 }
 
 nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
+nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, createDatabase);
