@@ -133,7 +133,6 @@ var pushToDatabase = function(err, ndata, gdata, conn, callback) {
         });
     }
     console.log('Another final callback');
-    console.log(subjects);
     callback();
 };
 
@@ -163,6 +162,7 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
             //console.log(subjects);
         });
     }
+    console.log(subjects);
     callback(null, jsonData, guardianData, conn, pushToDatabase);
 }
 
@@ -179,7 +179,7 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
             var concepts = response.concepts;
             for (var i = 0; i < 3 && i < concepts.length; i++) {
                 var subject = concepts[i].text;
-                if (subjects[subject] === undefined & subject !== '') {
+                if (subjects[subject] === undefined && subject !== '') {
                     subjects[subject] = 1;
                 } else if (subject !== '') {
                     subjects[subject]++;
@@ -188,6 +188,7 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
             //console.log(subjects);
         });
     }
+    console.log(subjects);
     callback(null, nytData, jsonData, conn, sortSubjects);
 }
 
