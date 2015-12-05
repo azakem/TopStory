@@ -11,6 +11,7 @@ var keys = {
 
 var nyt = new NYT(keys);
 var inserted = 0;
+var insertedSubjects = 0;
 var subjects = {};
 
 var getGuardianArticles = function(data) {
@@ -107,7 +108,7 @@ var pushToDatabase = function(err, ndata, gdata, conn, callback) {
             }
             else {
                 inserted++;
-                console.log(inserted,"Records Inserted");
+                console.log(inserted,"Records Inserted - NYT");
             }
         });
     }
@@ -128,12 +129,16 @@ var pushToDatabase = function(err, ndata, gdata, conn, callback) {
             }
             else {
                 inserted++;
-                console.log(inserted,"Records Inserted");
+                console.log(inserted,"Records Inserted - Guardian");
+                if (inserted === 30)
+                {
+                  callback(conn);
+                }
             }
         });
     }
     console.log('Another final callback');
-    callback();
+    //callback();
 };
 
 var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
@@ -192,9 +197,44 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
     callback(null, nytData, jsonData, conn, sortSubjects);
 }
 
-var sortSubjects = function() {
+var sortSubjects = function(conn) {
+    console.log(subjects);
+    console.log("sortSubjects");
     var keysSorted = Object.keys(subjects).sort(function(a,b) {return subjects[a]-subjects[b]});
     console.log(keysSorted);
+    conn.query('DROP TABLE IF EXISTS TopSubjects', function(err, result) {
+        // Catch error in dropping table
+        if(err) {
+            console.log(err);
+        }
+        else {
+            console.log("Table TopSubjects Dropped");
+        }
+    });
+    // Create new TopStories table
+    conn.query("CREATE TABLE TopSubjects (ID int, Subject VARCHAR(200))", function(err, result) {
+        // Catch error in creating table
+        if(err) {
+            console.log(err);
+            return err;
+        } else {
+            console.log("Table TopSubjects Created");
+        }
+    });
+    for (var i = 0; i <5; i++) {
+      var index = keysSorted.length - 1 - i;
+      subject = {ID: i+1, Subject: keysSorted[index]};
+      conn.query('INSERT INTO TopSubjects SET ?', subject, function (err, result) {
+          // Catch error in inserting record
+          if(err) {
+              console.log(err);
+          }
+          else {
+              insertedSubjects++;
+              console.log("Inserted",insertedSubjects,"Subjects");
+          }
+      });
+    }
 }
 
 
@@ -205,5 +245,5 @@ var main = function(callback) {
 
 main(function(err) {
     console.log("Final callback");
-    sortSubjects();
+    //sortSubjects();
 });
