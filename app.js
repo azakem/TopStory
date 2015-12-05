@@ -24,8 +24,9 @@ var getGuardianArticles = function(data) {
     var year = datetime.getUTCFullYear();
     var currentDate = year + '-' + month + '-' + day;
     guardian.content({fromDate : currentDate}).then(function(response){
-        //console.log(response.response.results);
-        createDatabase(err, response, data, pushToDatabase);
+        console.log(response.response.results);
+        createDatabase(null, response, data, parseNytSubjects);
+        console.log('The darkest timeline');
     }, function(err){
         console.log(err);
     });
@@ -62,15 +63,13 @@ var createDatabase = function(err, gdata, ndata, callback) {
         } else {
             console.log("Table TopStories Created");
             //console.log(parsedNData)
-            callback(null, parsedNData, gdata, conn, sortSubjects);
+            callback(null, parsedNData, gdata, conn, parseGuardianSubjects);
         }
     });
 };
 
 var pushToDatabase = function(err, ndata, gdata, conn, callback) {
     console.log('push to database');
-    parseNytSubjects(ndata);
-    parseGuardianSubjects(gdata);
     // Write NYT stories to TopStories table
     for (var i = 0; i < ndata.results.length; i++)
     {
@@ -135,10 +134,10 @@ var pushToDatabase = function(err, ndata, gdata, conn, callback) {
     }
     console.log('Another final callback');
     console.log(subjects);
-    sortSubjects();
+    callback();
 };
 
-var parseNytSubjects = function(err, jsonData, guardianData, callback) {
+var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
     var arrayLength = jsonData.results.length;
     for (var i = 0; i < arrayLength; i++) {
         var url = jsonData.results[i].url;
@@ -164,10 +163,10 @@ var parseNytSubjects = function(err, jsonData, guardianData, callback) {
             //console.log(subjects);
         });
     }
-    callback(null, guardianData, pushToDatabase);
+    callback(null, jsonData, guardianData, conn, pushToDatabase);
 }
 
-var parseGuardianSubjects = function(err, jsonData, callback) {
+var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
     var data = jsonData.response.results;
     var arrayLength = data.length;
     for (var i = 0; i < arrayLength; i++) {
@@ -189,6 +188,7 @@ var parseGuardianSubjects = function(err, jsonData, callback) {
             //console.log(subjects);
         });
     }
+    callback(null, nytData, jsonData, conn, sortSubjects);
 }
 
 var sortSubjects = function() {
