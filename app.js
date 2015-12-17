@@ -13,11 +13,12 @@ var nyt = new NYT(keys);
 var inserted = 0;
 var insertedSubjects = 0;
 var subjects = {};
+var alchemyArticles = null;
 
 var main = function(callback) {
     nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
     callback(null);
-}
+};
 
 var getGuardianArticles = function(data) {
     console.log('get guardian articles');
@@ -36,7 +37,7 @@ var getGuardianArticles = function(data) {
     }, function(err){
         console.log(err);
     });
-}
+};
 
 var createDatabase = function(err, gdata, ndata, callback) {
     console.log('create database');
@@ -102,8 +103,8 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
         });
     }
     console.log(subjects);
-    callback(null, jsonData, guardianData, conn, pushToDatabase);
-}
+    callback(null, jsonData, guardianData, conn, getAlchemyArticles);
+};
 
 var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
     var data = jsonData.response.results;
@@ -128,10 +129,34 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
         });
     }
     console.log(subjects);
-    callback(null, nytData, jsonData, conn, sortSubjects);
-}
+    callback(null, nytData, jsonData, conn, pushToDatabase);
+};
 
-var pushToDatabase = function(err, ndata, gdata, conn, callback) {
+var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
+    var request = require('request');
+    request('https://gateway-a.watsonplatform.net/calls/data/GetNews?apikey=38be13e0eb95fc7806ff197fbb784d33558dbe3c&outputMode=json&start=now-1d&end=now&count=10&return=enriched.url.url,enriched.url.text,enriched.url.title,enriched.url.concepts.concept.text,enriched.url.concepts.concept.relevance', 
+            function(error, response, body) {
+                if (error) {
+                    console.log(error);
+                } else if (response.statusCode == 200) {
+                    var info = JSON.parse(body);
+                    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+                    console.log(info);
+                    for (var i = 0; i < info.result.docs.length; i++) {
+                        console.log(info.result.docs[i].source.enriched.url.concepts);
+                        console.log(info.result.docs[i].source.enriched.url.text);
+                        console.log(info.result.docs[i].source.enriched.url.title);
+                    }
+                    alchemyArticles = info;
+                } else {
+                    console.log('no response');
+                }
+            }
+    );
+    callback(err, nytData, guardianData, alchemyArticles, conn, sortSubjects);
+};
+
+var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback) {
     console.log('push to database');
     // Write NYT stories to TopStories table
     for (var i = 0; i < ndata.results.length; i++)
@@ -192,10 +217,9 @@ var pushToDatabase = function(err, ndata, gdata, conn, callback) {
             } else {
                 inserted++;
                 console.log(inserted,"Records Inserted - Guardian");
-                if (inserted === 30)
-        {
-            callback(conn);
-        }
+                if (inserted === 30) {
+                    callback(conn);
+                }
             }
         });
     }
@@ -243,10 +267,9 @@ var sortSubjects = function(conn) {
             }
         });
     }
-}
+};
 
 main(function(err) {
     console.log("Final callback");
-    //sortSubjects();
 });
 
