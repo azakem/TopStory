@@ -14,6 +14,11 @@ var inserted = 0;
 var insertedSubjects = 0;
 var subjects = {};
 
+var main = function(callback) {
+    nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
+    callback(null);
+}
+
 var getGuardianArticles = function(data) {
     console.log('get guardian articles');
     guardian.config({
@@ -69,77 +74,6 @@ var createDatabase = function(err, gdata, ndata, callback) {
     });
 };
 
-var pushToDatabase = function(err, ndata, gdata, conn, callback) {
-    console.log('push to database');
-    // Write NYT stories to TopStories table
-    for (var i = 0; i < ndata.results.length; i++)
-    {
-        var id = i+1;
-        var storyURL = ndata.results[i].url;
-        var section = ndata.results[i].section;
-        var title = ndata.results[i].title;
-        var abstract = ndata.results[i].abstract;
-        var source = "NYT";
-        var firstImage = null;
-        if (ndata.results[i].media) {
-            if (ndata.results[i].media !== null) {
-                var done = false;
-                for (var x=0; x < ndata.results[i].media.length; x++) {
-                    if (ndata.results[i].media[x].type == "image") {
-                        for (var y = 0; y < ndata.results[i].media[x]["media-metadata"].length; y++) {
-                            if (ndata.results[i].media[x]["media-metadata"][y].url) {
-                                firstImage = ndata.results[i].media[x]["media-metadata"][y].url;
-                                done = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        var keywords = ndata.results[i].adx_keywords;
-        article = {ID: id, URL: storyURL, Section: section, Title: title,
-            Abstract: abstract, Source: source, FirstImage: firstImage,
-            Keywords: keywords};
-        conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
-            // Catch error in inserting record
-            if(err) {
-                console.log(err);
-            }
-            else {
-                inserted++;
-                console.log(inserted,"Records Inserted - NYT");
-            }
-        });
-    }
-
-    var offset = ndata.results.length;
-    for (var i = 0; i < gdata.response.results.length; i++) {
-        var id = i+1+offset;
-        var storyURL = gdata.response.results[i].webUrl;
-        var section = gdata.response.results[i].sectionName;
-        var title = gdata.response.results[i].webTitle;
-        var source = "Guardian";
-        article = {ID: id, URL: storyURL, Section: section, Title: title,
-            Source: source};
-        conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
-            // Catch error in inserting record
-            if(err) {
-                console.log(err);
-            }
-            else {
-                inserted++;
-                console.log(inserted,"Records Inserted - Guardian");
-                if (inserted === 30)
-                {
-                  callback(conn);
-                }
-            }
-        });
-    }
-    console.log('Another final callback');
-    //callback();
-};
 
 var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
     var arrayLength = jsonData.results.length;
@@ -197,11 +131,83 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
     callback(null, nytData, jsonData, conn, sortSubjects);
 }
 
+var pushToDatabase = function(err, ndata, gdata, conn, callback) {
+    console.log('push to database');
+    // Write NYT stories to TopStories table
+    for (var i = 0; i < ndata.results.length; i++)
+    {
+        var id = i+1;
+        var storyURL = ndata.results[i].url;
+        var section = ndata.results[i].section;
+        var title = ndata.results[i].title;
+        var abstract = ndata.results[i].abstract;
+        var source = "NYT";
+        var firstImage = null;
+        if (ndata.results[i].media) {
+            if (ndata.results[i].media !== null) {
+                var done = false;
+                for (var x=0; x < ndata.results[i].media.length; x++) {
+                    if (ndata.results[i].media[x].type == "image") {
+                        for (var y = 0; y < ndata.results[i].media[x]["media-metadata"].length; y++) {
+                            if (ndata.results[i].media[x]["media-metadata"][y].url) {
+                                firstImage = ndata.results[i].media[x]["media-metadata"][y].url;
+                                done = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        var keywords = ndata.results[i].adx_keywords;
+        article = {ID: id, URL: storyURL, Section: section, Title: title,
+            Abstract: abstract, Source: source, FirstImage: firstImage,
+            Keywords: keywords};
+
+        conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
+            // Catch error in inserting record
+            if(err) {
+                console.log(err);
+            }
+            else {
+                inserted++;
+                console.log(inserted,"Records Inserted - NYT");
+            }
+        });
+    }
+
+    var offset = ndata.results.length;
+    for (var i = 0; i < gdata.response.results.length; i++) {
+        var id = i+1+offset;
+        var storyURL = gdata.response.results[i].webUrl;
+        var section = gdata.response.results[i].sectionName;
+        var title = gdata.response.results[i].webTitle;
+        var source = "Guardian";
+        article = {ID: id, URL: storyURL, Section: section, Title: title,
+            Source: source};
+        conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
+            // Catch error in inserting record
+            if(err) {
+                console.log(err);
+            } else {
+                inserted++;
+                console.log(inserted,"Records Inserted - Guardian");
+                if (inserted === 30)
+        {
+            callback(conn);
+        }
+            }
+        });
+    }
+};
+
+
 var sortSubjects = function(conn) {
     console.log(subjects);
     console.log("sortSubjects");
     var keysSorted = Object.keys(subjects).sort(function(a,b) {return subjects[a]-subjects[b]});
     console.log(keysSorted);
+
     conn.query('DROP TABLE IF EXISTS TopSubjects', function(err, result) {
         // Catch error in dropping table
         if(err) {
@@ -211,6 +217,7 @@ var sortSubjects = function(conn) {
             console.log("Table TopSubjects Dropped");
         }
     });
+
     // Create new TopStories table
     conn.query("CREATE TABLE TopSubjects (ID int, Subject VARCHAR(200))", function(err, result) {
         // Catch error in creating table
@@ -221,29 +228,25 @@ var sortSubjects = function(conn) {
             console.log("Table TopSubjects Created");
         }
     });
+
     for (var i = 0; i <5; i++) {
-      var index = keysSorted.length - 1 - i;
-      subject = {ID: i+1, Subject: keysSorted[index]};
-      conn.query('INSERT INTO TopSubjects SET ?', subject, function (err, result) {
-          // Catch error in inserting record
-          if(err) {
-              console.log(err);
-          }
-          else {
-              insertedSubjects++;
-              console.log("Inserted",insertedSubjects,"Subjects");
-          }
-      });
+        var index = keysSorted.length - 1 - i;
+        subject = {ID: i+1, Subject: keysSorted[index]};
+        conn.query('INSERT INTO TopSubjects SET ?', subject, function (err, result) {
+            // Catch error in inserting record
+            if(err) {
+                console.log(err);
+            }
+            else {
+                insertedSubjects++;
+                console.log("Inserted",insertedSubjects,"Subjects");
+            }
+        });
     }
-}
-
-
-var main = function(callback) {
-    nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
-    callback(null);
 }
 
 main(function(err) {
     console.log("Final callback");
     //sortSubjects();
 });
+
