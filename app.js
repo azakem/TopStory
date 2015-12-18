@@ -21,7 +21,7 @@ var main = function() {
 };
 
 var getGuardianArticles = function(data) {
-    console.log(JSON.parse(data).results);
+    //console.log(JSON.parse(data).results);
     console.log('get guardian articles');
     guardian.config({
         apiKey: '5c0868ca-c973-4d1d-8062-47ed79ef96ae'
@@ -32,7 +32,7 @@ var getGuardianArticles = function(data) {
     var year = datetime.getUTCFullYear();
     var currentDate = year + '-' + month + '-' + day;
     guardian.content({fromDate : currentDate}).then(function(response){
-        console.log(response.response.results);
+        //console.log(response.response.results);
         createDatabase(null, response, data, parseNytSubjects);
     }, function(err){
         console.log(err);
@@ -76,6 +76,7 @@ var createDatabase = function(err, gdata, ndata, callback) {
 };
 
 var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
+    console.log("Parse NYT Subjects");
     var arrayLength = jsonData.results.length;
     for (var i = 0; i < arrayLength; i++) {
         var url = jsonData.results[i].url;
@@ -83,7 +84,7 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
             if (err) {
                 throw err;
             }
-            console.log(response);
+            //console.log(response);
             var storyURL = response.url.slice(0,-5);
             var concepts = response.concepts;
             var topArticleSubjects = [];
@@ -97,37 +98,38 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
                   } else if (subject !== '') {
                   subjects[subject] = 1;
                   }*/
-                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject] = 1;
-                } else if (subject !== '' && subject != 'length' && subject !== 'all rights reserved') {
+                } else if (subject !== '' && subject != 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject]++;
                 }
                 if (j === endpoint - 1) {
                     articleSubjects[storyURL] = topArticleSubjects;
-                    console.log("Article URL:",storyURL);
-                    console.log("Article subjects:",topArticleSubjects);
-                    console.log("Array entry:",articleSubjects[storyURL]);
+                    //console.log("Article URL:",storyURL);
+                    //console.log("Article subjects:",topArticleSubjects);
+                    //console.log("Array entry:",articleSubjects[storyURL]);
                 }
             }
             //console.log(subjects);
         });
         if (i === arrayLength - 1) {
-            console.log(subjects);
+            //console.log(subjects);
         }
     }
     var delay = setTimeout(function () {callback(null, jsonData, guardianData, conn, getAlchemyArticles);},5000);
 };
 
 var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
+    console.log("Parse Guardian subjects");
     var data = jsonData.response.results;
     var arrayLength = data.length;
     for (var i = 0; i < arrayLength; i++) {
         var url = data[i].webUrl;
         alchemy.concepts(url, {}, function(err, response) {
             if (err) {
-                throw err;
+                console.log(err);
             }
-            console.log(response);
+            //console.log(response);
             var storyURL = response.url;
             var concepts = response.concepts;
             var topArticleSubjects = [];
@@ -136,22 +138,22 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
             for (var j = 0; j < endpoint; j++) {
                 var subject = concepts[j].text;
                 topArticleSubjects.push(subject);
-                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject] = 1;
-                } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject]++;
                 }
                 if (j === endpoint-1) {
                     articleSubjects[storyURL] = topArticleSubjects;
-                    console.log("Article URL:",storyURL);
-                    console.log("Article subjects:",topArticleSubjects);
-                    console.log("Array entry:",articleSubjects[storyURL]);
+                    //console.log("Article URL:",storyURL);
+                    //console.log("Article subjects:",topArticleSubjects);
+                    //console.log("Array entry:",articleSubjects[storyURL]);
                 }
             }
             //console.log(subjects);
         }); //end of delay statement
         if (i === arrayLength - 1) {
-            console.log(subjects);
+            //console.log(subjects);
         }
     }
     //callback(null, nytData, jsonData, conn, pushToDatabase);
@@ -159,6 +161,7 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
 };
 
 var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
+    console.log("Get Alchemy News Articles");
     var request = require('request');
     request('https://gateway-a.watsonplatform.net/calls/data/GetNews?apikey=38be13e0eb95fc7806ff197fbb784d33558dbe3c&outputMode=json&start=now-1d&end=now&count=1000&return=enriched.url.url,enriched.url.title,enriched.url.concepts.concept.text,enriched.url.concepts.concept.relevance',
             function(error, response, body) {
@@ -166,14 +169,14 @@ var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
                     console.log(error);
                 } else if (response.statusCode == 200) {
                     var info = JSON.parse(body);
-                    console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
-                    console.log(info);
+                    //console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+                    //console.log(info);
                     for (var i = 0; i < info.result.docs.length; i++) {
-                        if (info.result.docs[i].source.enriched) {
+                        /*if (info.result.docs[i].source.enriched) {
                             console.log(info.result.docs[i].source.enriched.url.title);
                             console.log(info.result.docs[i].source.enriched.url.url);
                             console.log(info.result.docs[i].source.enriched.url.concepts);
-                        }
+                        }*/
                     }
                     alchemyArticles = info;
                     callback(err, nytData, guardianData, conn, pushToDatabase);
@@ -185,6 +188,7 @@ var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
 };
 
 var parseAlchemySubjects = function(err, nytData, guardianData, conn, callback) {
+    console.log("Parse Alchemy News subjects");
     for (var i = 0; i < alchemyArticles.result.docs.length; i++) {
         if (alchemyArticles.result.docs[i].source.enriched)
         {
@@ -195,9 +199,9 @@ var parseAlchemySubjects = function(err, nytData, guardianData, conn, callback) 
             for (var j = 0; j < endpoint; j++) {
                 var subject = alchemyArticles.result.docs[i].source.enriched.url.concepts[j].text;
                 topArticleSubjects[j] = subject;
-                    if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                    if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                         subjects[subject] = 1;
-                    } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                    } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                         subjects[subject]++;
                     }
                     if (j === endpoint-1) {
@@ -241,8 +245,8 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
         var keywords = ndata.results[i].adx_keywords;
         var subjects = "";
         var subjectList = articleSubjects[storyURL];
-        console.log("Subject List:",subjectList);
-        console.log("URL:",storyURL);
+        //console.log("Subject List:",subjectList);
+        //console.log("URL:",storyURL);
         if (subjectList && subjectList.length > 0) {
             for (var j = 0; j < subjectList.length; j++) {
                 subjects = subjects + subjectList[j] + ";";
@@ -260,7 +264,7 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
             }
             else {
                 inserted++;
-                console.log(inserted,"Records Inserted - NYT");
+                console.log(inserted,'Records Inserted - NYT');
             }
         });
     }
@@ -289,13 +293,14 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
                 console.log(err);
             } else {
                 inserted++;
-                console.log(inserted,"Records Inserted - Guardian");
+                console.log(inserted,'Records Inserted - Guardian');
             }
         });
     }
 
     //write AlchemyNews stories to TopStories table
     offset = offset + gdata.response.results.length;
+    var handoff = false;
     for (var i = 0; i < alchemyArticles.result.docs.length; i++) {
         if (alchemyArticles.result.docs[i].source.enriched) {
             var id = i+1+offset;
@@ -319,19 +324,24 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
                     console.log(err);
                 } else {
                     inserted++;
-                    console.log(inserted,"Records Inserted - AlchemyNews");
+                    console.log(inserted,'Records Inserted - AlchemyNews');
+                    if (inserted >= 1000 && handoff === false)
+                    {
+                        handoff = true;
+                        var delay = setTimeout(function () { callback(conn);},5000);
+                    }
                 }
             });
         }
     }
-    var delay = setTimeout(function () { callback(conn);},20000);
+
 };
 
 var sortSubjects = function(conn) {
-    console.log(subjects);
+    //console.log(subjects);
     console.log("sortSubjects");
     var keysSorted = Object.keys(subjects).sort(function(a,b) {return subjects[a]-subjects[b]});
-    console.log(keysSorted);
+    //console.log(keysSorted);
 
     conn.query('DROP TABLE IF EXISTS TopSubjects', function(err, result) {
         // Catch error in dropping table
