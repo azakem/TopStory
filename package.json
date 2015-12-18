@@ -10,7 +10,8 @@
     "nyt": "*",
     "util": "*",
     "guardian-news": "*",
-    "alchemy-api": "*"
+    "alchemy-api": "*",
+    "request": "*"
   },
   "author": "Aaron Zakem, Khetthai Laksanakorn",
   "license": "ISC",

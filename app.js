@@ -4,6 +4,7 @@ var util = require('util');
 var guardian = require('guardian-news');
 var AlchemyAPI = require('alchemy-api');
 var alchemy = new AlchemyAPI('38be13e0eb95fc7806ff197fbb784d33558dbe3c');
+var request = require('request');
 
 var keys = {
     'most-popular': 'cb76354cff5a72e93e1e76afa2e4015f:15:72699233'
@@ -162,7 +163,6 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
 
 var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
     console.log("Get Alchemy News Articles");
-    var request = require('request');
     request('https://gateway-a.watsonplatform.net/calls/data/GetNews?apikey=38be13e0eb95fc7806ff197fbb784d33558dbe3c&outputMode=json&start=now-1d&end=now&count=1000&return=enriched.url.url,enriched.url.title,enriched.url.concepts.concept.text,enriched.url.concepts.concept.relevance',
             function(error, response, body) {
                 if (error) {
