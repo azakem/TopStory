@@ -16,9 +16,8 @@ var subjects = {};
 var articleSubjects = {};
 var alchemyArticles = null;
 
-var main = function(callback) {
+var main = function() {
     nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
-    var delay = setTimeout(function () {callback(null);}, 15000);
 };
 
 var getGuardianArticles = function(data) {
@@ -99,9 +98,9 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
                   } else if (subject !== '') {
                   subjects[subject] = 1;
                   }*/
-                if (subjects[subject] === undefined && subject !== '') {
+                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
                     subjects[subject] = 1;
-                } else if (subject !== '') {
+                } else if (subject !== '' && subject != 'length' && subject !== 'all rights reserved') {
                     subjects[subject]++;
                 }
                 if (j === endpoint - 1) {
@@ -138,9 +137,9 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
             for (var j = 0; j < endpoint; j++) {
                 var subject = concepts[j].text;
                 topArticleSubjects.push(subject);
-                if (subjects[subject] === undefined && subject !== '') {
+                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
                     subjects[subject] = 1;
-                } else if (subject !== '') {
+                } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
                     subjects[subject]++;
                 }
                 if (j === endpoint-1) {
@@ -152,7 +151,6 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
             }
             //console.log(subjects);
         }); //end of delay statement
-
         if (i === arrayLength - 1) {
             console.log(subjects);
         }
@@ -194,9 +192,9 @@ var parseAlchemySubjects = function(err, nytData, guardianData, conn, callback) 
         for (var j = 0; j < endpoint; j++) {
             var subject = alchemyArticles.result.docs[i].source.enriched.url.concepts[j].text;
             topArticleSubjects[j] = subject;
-                if (subjects[subject] === undefined && subject !== '') {
+                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
                     subjects[subject] = 1;
-                } else if (subject !== '') {
+                } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
                     subjects[subject]++;
                 }
                 if (j === endpoint-1) {
@@ -317,12 +315,11 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
             } else {
                 inserted++;
                 console.log(inserted,"Records Inserted - AlchemyNews");
-                if (i === alchemyArticles.result.docs.length - 1 || inserted === 40) {
-                    callback(conn);
-                }
             }
         });
+
     }
+    var delay = setTimeout(function () { callback(conn);},20000);
 };
 
 var sortSubjects = function(conn) {
@@ -368,6 +365,5 @@ var sortSubjects = function(conn) {
     }
 };
 
-main(function(err) {
-    console.log("Final callback");
-});
+main();
+setInterval(main, 14400000);
