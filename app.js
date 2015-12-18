@@ -34,7 +34,6 @@ var getGuardianArticles = function(data) {
     guardian.content({fromDate : currentDate}).then(function(response){
         console.log(response.response.results);
         createDatabase(null, response, data, parseNytSubjects);
-        console.log('The darkest timeline');
     }, function(err){
         console.log(err);
     });
@@ -170,14 +169,16 @@ var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
                     console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
                     console.log(info);
                     for (var i = 0; i < info.result.docs.length; i++) {
-                        console.log(info.result.docs[i].source.enriched.url.title);
-                        console.log(info.result.docs[i].source.enriched.url.url);
-                        console.log(info.result.docs[i].source.enriched.url.concepts);
+                        if (info.result.docs[i].source.enriched) {
+                            console.log(info.result.docs[i].source.enriched.url.title);
+                            console.log(info.result.docs[i].source.enriched.url.url);
+                            console.log(info.result.docs[i].source.enriched.url.concepts);
+                        }
                     }
                     alchemyArticles = info;
                     callback(err, nytData, guardianData, conn, pushToDatabase);
                 } else {
-                    console.log('no response');
+                    console.log('Erroneous response');
                 }
             }
     );
@@ -185,23 +186,26 @@ var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
 
 var parseAlchemySubjects = function(err, nytData, guardianData, conn, callback) {
     for (var i = 0; i < alchemyArticles.result.docs.length; i++) {
-        var url = alchemyArticles.result.docs[i].source.enriched.url.url;
-        var topArticleSubjects = [];
-        var numsubjects = alchemyArticles.result.docs[i].source.enriched.url.concepts.length;
-        var endpoint = Math.min(numsubjects, 3);
-        for (var j = 0; j < endpoint; j++) {
-            var subject = alchemyArticles.result.docs[i].source.enriched.url.concepts[j].text;
-            topArticleSubjects[j] = subject;
-                if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
-                    subjects[subject] = 1;
-                } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
-                    subjects[subject]++;
+        if (alchemyArticles.result.docs[i].source.enriched)
+        {
+            var url = alchemyArticles.result.docs[i].source.enriched.url.url;
+            var topArticleSubjects = [];
+            var numsubjects = alchemyArticles.result.docs[i].source.enriched.url.concepts.length;
+            var endpoint = Math.min(numsubjects, 3);
+            for (var j = 0; j < endpoint; j++) {
+                var subject = alchemyArticles.result.docs[i].source.enriched.url.concepts[j].text;
+                topArticleSubjects[j] = subject;
+                    if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                        subjects[subject] = 1;
+                    } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved') {
+                        subjects[subject]++;
+                    }
+                    if (j === endpoint-1) {
+                        articleSubjects[url] = topArticleSubjects;
+                    }
                 }
-                if (j === endpoint-1) {
-                    articleSubjects[url] = topArticleSubjects;
-                }
+                //console.log(subjects);
             }
-            //console.log(subjects);
         }
     var delay = setTimeout(function () { callback(err, nytData, guardianData, alchemyArticles, conn, sortSubjects); },10000);
 };
@@ -293,31 +297,32 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
     //write AlchemyNews stories to TopStories table
     offset = offset + gdata.response.results.length;
     for (var i = 0; i < alchemyArticles.result.docs.length; i++) {
-        var id = i+1+offset;
-        var storyURL = alchemyArticles.result.docs[i].source.enriched.url.url;
-        var title = alchemyArticles.result.docs[i].source.enriched.url.title;
-        var source = "AlchemyNews";
+        if (alchemyArticles.result.docs[i].source.enriched) {
+            var id = i+1+offset;
+            var storyURL = alchemyArticles.result.docs[i].source.enriched.url.url;
+            var title = alchemyArticles.result.docs[i].source.enriched.url.title;
+            var source = "AlchemyNews";
 
-        var subjects = "";
-        var subjectList = articleSubjects[storyURL];
-        if (subjectList && subjectList.length > 0) {
-            for (var j = 0; j < subjectList.length; j++) {
-                subjects = subjects + subjectList[j] + ";";
+            var subjects = "";
+            var subjectList = articleSubjects[storyURL];
+            if (subjectList && subjectList.length > 0) {
+                for (var j = 0; j < subjectList.length; j++) {
+                    subjects = subjects + subjectList[j] + ";";
+                }
             }
+
+            article = {ID: id, URL: storyURL, Title: title,
+                Source: source, Subjects: subjects};
+            conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
+                // Catch error in inserting record
+                if(err) {
+                    console.log(err);
+                } else {
+                    inserted++;
+                    console.log(inserted,"Records Inserted - AlchemyNews");
+                }
+            });
         }
-
-        article = {ID: id, URL: storyURL, Title: title,
-            Source: source, Subjects: subjects};
-        conn.query('INSERT INTO TopStories SET ?', article, function (err, result) {
-            // Catch error in inserting record
-            if(err) {
-                console.log(err);
-            } else {
-                inserted++;
-                console.log(inserted,"Records Inserted - AlchemyNews");
-            }
-        });
-
     }
     var delay = setTimeout(function () { callback(conn);},20000);
 };
