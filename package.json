@@ -8,9 +8,11 @@
   "dependencies": {
     "mysql": "*",
     "nyt": "*",
-    "express": "*"
+    "util": "*",
+    "guardian-news": "*",
+    "alchemy-api": "*"
   },
-  "author": "",
+  "author": "Aaron Zakem, Khetthai Laksanakorn",
   "license": "ISC",
-  "description": ""
+  "description": "Article Collector for TopStory"
 }
