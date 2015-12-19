@@ -86,7 +86,9 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
                 throw err;
             }
             //console.log(response);
-            var storyURL = response.url.slice(0,-5);
+            if (response.url) {
+                var storyURL = response.url.slice(0,-5);
+            }
             var concepts = response.concepts;
             var topArticleSubjects = [];
             var numsubjects = concepts.length;
@@ -104,7 +106,7 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
                 } else if (subject !== '' && subject != 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject]++;
                 }
-                if (j === endpoint - 1) {
+                if (j === endpoint - 1 && storyURL !== '') {
                     articleSubjects[storyURL] = topArticleSubjects;
                     //console.log("Article URL:",storyURL);
                     //console.log("Article subjects:",topArticleSubjects);
