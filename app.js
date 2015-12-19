@@ -171,15 +171,15 @@ var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
                     console.log(error);
                 } else if (response.statusCode == 200) {
                     var info = JSON.parse(body);
-                    //console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
+                    /*console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~Alchemy Results~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~');
                     //console.log(info);
                     for (var i = 0; i < info.result.docs.length; i++) {
                         /*if (info.result.docs[i].source.enriched) {
                             console.log(info.result.docs[i].source.enriched.url.title);
                             console.log(info.result.docs[i].source.enriched.url.url);
                             console.log(info.result.docs[i].source.enriched.url.concepts);
-                        }*/
-                    }
+                        }
+                    }*/
                     alchemyArticles = info;
                     callback(err, nytData, guardianData, conn, pushToDatabase);
                 } else {
@@ -383,4 +383,10 @@ var sortSubjects = function(conn) {
 };
 
 main();
-setInterval(main, 14400000);
+setInterval( function() {
+    inserted = 0;
+    insertedSubjects = 0;
+    subjects = {};
+    articleSubjects = {};
+    alchemyArticles = null;
+    main();}, 14400000);
