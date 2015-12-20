@@ -11,11 +11,13 @@ var keys = {
 };
 
 var nyt = new NYT(keys);
-var inserted = 0;
-var insertedSubjects = 0;
-var subjects = {};
-var articleSubjects = {};
-var alchemyArticles = null;
+var inserted = 0; // articles inserted into TopStories
+var insertedSubjects = 0; // articles inserted into TopSubjects
+var insertedSerSubjects = 0; // articles inserted into TopSeriousSubjects
+var subjects = {}; // dictionary of subject:count of apperances of subject
+var seriousSubjects = {}; // dictionary of subject:count for NYT/Guardian only
+var articleSubjects = {}; // temporary storage of top subjects for individual article
+var alchemyArticles = null; // results returned from Alchemy DataNews
 
 var main = function() {
     nyt.mostPopular.viewed({'section': 'all-sections', 'time-period': '1'}, getGuardianArticles);
@@ -103,8 +105,10 @@ var parseNytSubjects = function(err, jsonData, guardianData, conn, callback) {
                   }*/
                 if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject] = 1;
+                    seriousSubjects[subject] = 1;
                 } else if (subject !== '' && subject != 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject]++;
+                    seriousSubjects[subject]++;
                 }
                 if (j === endpoint - 1 && storyURL !== '') {
                     articleSubjects[storyURL] = topArticleSubjects;
@@ -143,8 +147,10 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
                 topArticleSubjects.push(subject);
                 if (subjects[subject] === undefined && subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject] = 1;
+                    seriousSubjects[subject] = 1;
                 } else if (subject !== '' && subject !== 'length' && subject !== 'all rights reserved' && subject !== 'copyright') {
                     subjects[subject]++;
+                    seriousSubjects[subject]++;
                 }
                 if (j === endpoint-1) {
                     articleSubjects[storyURL] = topArticleSubjects;
@@ -340,6 +346,7 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
 };
 
 var sortSubjects = function(conn) {
+    //insert top five subjects for all stories into TopSubjects table
     //console.log(subjects);
     console.log("sortSubjects");
     var keysSorted = Object.keys(subjects).sort(function(a,b) {return subjects[a]-subjects[b]});
@@ -380,6 +387,44 @@ var sortSubjects = function(conn) {
             }
         });
     }
+
+    // insert top five subjects for NYT/Guardian only into TopSeriousSubjects table
+    var serKeysSorted = Object.keys(seriousSubjects).sort(function(a,b) {return seriousSubjects[a]-seriousSubjects[b]});
+    conn.query('DROP TABLE IF EXISTS TopSeriousSubjects', function(err, result) {
+        // Catch error in dropping table
+        if(err) {
+            console.log(err);
+        }
+        else {
+            console.log("Table TopSeriousSubjects Dropped");
+        }
+    });
+
+    // Create new TopStories table
+    conn.query("CREATE TABLE TopSeriousSubjects (ID int, Subject VARCHAR(200))", function(err, result) {
+        // Catch error in creating table
+        if(err) {
+            console.log(err);
+            return err;
+        } else {
+            console.log("Table TopSeriousSubjects Created");
+        }
+    });
+
+    for (var i = 0; i <5; i++) {
+        var index = serKeysSorted.length - 1 - i;
+        subject = {ID: i+1, Subject: serKeysSorted[index]};
+        conn.query('INSERT INTO TopSeriousSubjects SET ?', subject, function (err, result) {
+            // Catch error in inserting record
+            if(err) {
+                console.log(err);
+            }
+            else {
+                insertedSerSubjects++;
+                console.log("Inserted",insertedSerSubjects,"NYT/Guardian Subjects");
+            }
+        });
+    }
 };
 
 main();
@@ -387,6 +432,7 @@ setInterval( function() {
     inserted = 0;
     insertedSubjects = 0;
     subjects = {};
+    seriousSubjects = {};
     articleSubjects = {};
     alchemyArticles = null;
     main();}, 14400000);
