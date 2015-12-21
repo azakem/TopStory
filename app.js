@@ -431,6 +431,7 @@ main();
 setInterval( function() {
     inserted = 0;
     insertedSubjects = 0;
+    insertedSerSubjects = 0;
     subjects = {};
     seriousSubjects = {};
     articleSubjects = {};
