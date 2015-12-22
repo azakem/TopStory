@@ -171,7 +171,7 @@ var parseGuardianSubjects = function(err, nytData, jsonData, conn, callback) {
 
 var getAlchemyArticles = function(err, nytData, guardianData, conn, callback) {
     console.log("Get Alchemy News Articles");
-    request('https://gateway-a.watsonplatform.net/calls/data/GetNews?apikey=38be13e0eb95fc7806ff197fbb784d33558dbe3c&outputMode=json&start=now-1d&end=now&count=1000&return=enriched.url.url,enriched.url.title,enriched.url.concepts.concept.text,enriched.url.concepts.concept.relevance',
+    request('https://gateway-a.watsonplatform.net/calls/data/GetNews?apikey=38be13e0eb95fc7806ff197fbb784d33558dbe3c&outputMode=json&start=now-1d&end=now&count=2500&return=enriched.url.url,enriched.url.title,enriched.url.concepts.concept.text,enriched.url.concepts.concept.relevance',
             function(error, response, body) {
                 if (error) {
                     console.log(error);
