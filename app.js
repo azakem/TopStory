@@ -333,7 +333,7 @@ var pushToDatabase = function(err, ndata, gdata, alchemyArticles, conn, callback
                 } else {
                     inserted++;
                     console.log(inserted,'Records Inserted - AlchemyNews');
-                    if ((inserted >= 1000 || inserted >= (ndata.results.length + gdata.response.results.length + alchemyArticles.result.docs.length - 5)) && handoff === false)
+                    if ((inserted >= 2500 || inserted >= (ndata.results.length + gdata.response.results.length + alchemyArticles.result.docs.length - 5)) && handoff === false)
                     {
                         handoff = true;
                         var delay = setTimeout(function () { callback(conn);},5000);
